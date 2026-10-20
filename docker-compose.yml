@@ -1,0 +1,59 @@
+name: webssh
+
+services:
+  webssh:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NODE_VERSION: "22"
+    image: webssh:1.0.0
+    restart: unless-stopped
+
+    # 默认只监听回环地址，由反向代理对外提供服务；
+    # 需要局域网直连时设置 WEBSSH_BIND=0.0.0.0
+    ports:
+      - "${WEBSSH_BIND:-127.0.0.1}:${WEBSSH_PORT:-3000}:3000"
+
+    env_file:
+      - .env
+    environment:
+      # 覆盖 .env 中可能存在的开发配置
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: "3000"
+
+    volumes:
+      # 审计、录像、用户文件、known_hosts 与审计链密钥
+      - webssh-data:/app/data
+
+    # ---- 运行时加固 ----
+    read_only: true
+    cap_drop:
+      - ALL
+    # 入口脚本需要：修改数据卷属主 + 切换到 node 用户
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 512
+    mem_limit: 1g
+    stop_grace_period: 15s
+    tmpfs:
+      - /tmp
+      - /home/node:size=64m,uid=1000,gid=1000,mode=0700
+    ulimits:
+      nofile:
+        soft: 65535
+        hard: 65535
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  webssh-data:

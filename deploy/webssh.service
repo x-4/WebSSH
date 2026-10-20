@@ -1,0 +1,44 @@
+[Unit]
+Description=WebSSH (browser terminal)
+Documentation=https://github.com/your-org/webssh
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=webssh
+Group=webssh
+WorkingDirectory=/opt/webssh
+EnvironmentFile=/opt/webssh/.env
+ExecStart=/usr/bin/node /opt/webssh/server.js
+Restart=always
+RestartSec=3
+KillSignal=SIGTERM
+TimeoutStopSec=15
+
+# ---- 安全加固 ----
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/webssh/data
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictNamespaces=true
+LockPersonality=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictRealtime=true
+# node-pty 需要伪终端；不要启用 PrivateDevices
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+
+# ---- 资源限制 ----
+LimitNOFILE=65535
+TasksMax=4096
+MemoryMax=1G
+MemoryHigh=768M
+
+[Install]
+WantedBy=multi-user.target

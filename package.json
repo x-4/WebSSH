@@ -1,0 +1,35 @@
+{
+  "name": "webssh",
+  "version": "1.0.0",
+  "private": true,
+  "description": "浏览器远程终端：SSH 连接 + 部署机本机 PTY，支持多会话、断线重连与命令审计",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "hash": "node scripts/hash-password.js",
+    "mock": "node scripts/mock-ssh.js",
+    "test": "node --test test/auth.test.js test/rbac.test.js test/audit.test.js test/recording.test.js test/preflight.test.js test/ratelimit.test.js test/params.test.js test/inputParser.test.js test/integration.test.js",
+    "user": "node scripts/user.js",
+    "coverage": "node --test --experimental-test-coverage --test-coverage-include=\"src/**\" --test-coverage-exclude=\"server.js\" --test-coverage-lines=45 --test-coverage-branches=55 --test-coverage-functions=28 test/auth.test.js test/rbac.test.js test/audit.test.js test/recording.test.js test/preflight.test.js test/ratelimit.test.js test/params.test.js test/inputParser.test.js test/integration.test.js",
+    "test:e2e": "node --test test/e2e/browser.test.js",
+    "sbom": "npm sbom --sbom-format cyclonedx > sbom.cdx.json"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "ssh2": "^1.16.0",
+    "ws": "^8.18.0"
+  },
+  "optionalDependencies": {
+    "node-pty": "^1.1.0"
+  },
+  "devDependencies": {
+    "@xterm/addon-fit": "^0.10.0",
+    "@xterm/xterm": "^5.5.0",
+    "playwright-core": "^1.64.1"
+  }
+}

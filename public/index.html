@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>终端 · WebSSH</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/vendor/xterm/xterm.css">
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <div class="brand-mark">&gt;_</div>
+        <div class="brand-text">
+          <strong>WebSSH</strong>
+          <span>浏览器终端</span>
+        </div>
+        <button class="icon-btn sidebar-close" id="sidebar-close" title="收起">&times;</button>
+      </div>
+
+      <div class="sidebar-scroll">
+        <div class="form-title" id="mode-title">连接方式</div>
+        <div class="seg mode-seg" id="mode-seg" role="tablist">
+          <button type="button" class="seg-btn active" data-mode="local">部署机终端</button>
+          <button type="button" class="seg-btn" data-mode="ssh">远程 SSH</button>
+        </div>
+
+        <form class="conn-form" id="conn-form" autocomplete="off">
+          <div id="ssh-fields">
+            <div class="field-row">
+              <label class="field grow">
+                <span>主机</span>
+                <input id="host" name="host" type="text" placeholder="10.0.0.8 / example.com">
+              </label>
+              <label class="field port-field">
+                <span>端口</span>
+                <input id="port" name="port" type="number" value="22" min="1" max="65535">
+              </label>
+            </div>
+
+            <label class="field">
+              <span>用户名</span>
+              <input id="username" name="username" type="text" placeholder="root">
+            </label>
+
+            <p class="local-note" id="host-note" hidden>当前账号仅可连接被授权的主机，超出范围的请求会被拒绝。</p>
+
+            <div class="seg" id="auth-seg" role="tablist">
+              <button type="button" class="seg-btn active" data-auth="password">密码认证</button>
+              <button type="button" class="seg-btn" data-auth="key">密钥认证</button>
+            </div>
+
+            <label class="field" id="password-field">
+              <span>密码</span>
+              <input id="password" name="password" type="password" placeholder="登录口令">
+            </label>
+
+            <div id="key-fields" hidden>
+              <label class="field">
+                <span>私钥</span>
+                <textarea id="privateKey" rows="5" spellcheck="false" placeholder="-----BEGIN OPENSSH PRIVATE KEY-----"></textarea>
+              </label>
+              <label class="field">
+                <span>私钥口令（可选）</span>
+                <input id="passphrase" type="password" placeholder="加密私钥的口令">
+              </label>
+            </div>
+
+            <button class="btn primary block" type="submit" id="connect-btn">建立连接</button>
+            <p class="form-error" id="form-error" role="alert"></p>
+          </div>
+        </form>
+
+        <div id="no-permission" class="local-note warn" hidden>
+          当前角色仅可查看审计记录，没有打开终端的权限。
+        </div>
+
+        <div id="local-panel" hidden>
+          <div class="local-card">
+            <div class="local-row"><span>主机名</span><strong id="local-host">—</strong></div>
+            <div class="local-row"><span>Shell</span><code id="local-shell">—</code></div>
+            <div class="local-row"><span>工作目录</span><code id="local-cwd">—</code></div>
+            <div class="local-row"><span>运行身份</span><code id="local-user">—</code></div>
+          </div>
+
+          <p class="local-note" id="local-note">
+            本终端直接运行在部署机器上，权限等同服务运行账号；提交的命令会写入审计日志。
+          </p>
+
+          <button class="btn primary block" type="button" id="connect-local-btn">打开部署机终端</button>
+          <p class="form-error" id="local-error" role="alert"></p>
+        </div>
+
+        <div class="side-tips">
+          <div class="form-title">快捷键</div>
+          <ul>
+            <li><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd><span>复制选中</span></li>
+            <li><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd><span>粘贴</span></li>
+            <li><kbd>↑</kbd> / <kbd>↓</kbd><span>历史命令</span></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="sidebar-foot">
+        <span class="user"><i class="dot"></i><span id="current-user">—</span><em id="current-role"></em></span>
+        <button class="btn ghost small" id="logout-btn" type="button">退出</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="tabbar" id="tabbar">
+        <button class="icon-btn menu-btn" id="menu-btn" title="连接面板">&#9776;</button>
+        <div class="tabs" id="tabs"></div>
+        <div class="tabbar-empty" id="tabbar-empty">暂无会话</div>
+      </div>
+
+      <div class="stage" id="stage">
+        <div class="empty-state" id="empty-state">
+          <div class="empty-mark">&gt;_</div>
+          <h2>还没有打开的会话</h2>
+          <p>可以直接打开部署机终端，或通过 SSH 连接其他主机。</p>
+          <ul class="empty-points">
+            <li>部署机终端：无需配置，一键进入本机 Shell</li>
+            <li>远程 SSH：支持密码 / 私钥认证，可同时打开多个会话</li>
+            <li>命令历史：本地记录的已执行命令，可点击回填</li>
+          </ul>
+        </div>
+        <div class="terminals" id="terminals"></div>
+
+        <div class="touch-bar" id="touch-bar" hidden>
+          <button type="button" data-key="esc">Esc</button>
+          <button type="button" data-key="tab">Tab</button>
+          <button type="button" data-key="ctrl-c">Ctrl-C</button>
+          <button type="button" data-key="ctrl-d">Ctrl-D</button>
+          <button type="button" data-key="up">↑</button>
+          <button type="button" data-key="down">↓</button>
+          <button type="button" data-key="left">←</button>
+          <button type="button" data-key="right">→</button>
+        </div>
+      </div>
+
+      <div class="statusbar">
+        <span id="status-left" class="status-item" aria-live="polite">就绪</span>
+        <span class="spacer"></span>
+        <button class="btn ghost small status-history" id="recordings-btn" type="button" hidden>会话录像</button>
+        <button class="btn ghost small status-history" id="history-btn" type="button" hidden>命令历史</button>
+        <span id="status-latency" class="status-item mono"></span>
+        <span id="status-size" class="status-item mono"></span>
+      </div>
+
+      <aside class="history" id="history" hidden>
+        <header>
+          <span>命令历史</span>
+          <button class="icon-btn" id="history-close" type="button" title="关闭">&times;</button>
+        </header>
+        <div class="history-meta" id="history-meta"></div>
+        <ul class="history-list" id="history-list"></ul>
+        <footer>单击填入终端，双击直接执行</footer>
+      </aside>
+    </main>
+  </div>
+
+  <div class="modal" id="recordings-modal" hidden>
+    <div class="modal-card rec-card" role="dialog" aria-modal="true" aria-labelledby="rec-title">
+      <header class="rec-header">
+        <h3 id="rec-title">会话录像</h3>
+        <button class="icon-btn" id="recordings-close" type="button" title="关闭">&times;</button>
+      </header>
+      <div class="rec-body">
+        <ul class="rec-list" id="rec-list"></ul>
+        <div class="rec-main">
+          <div class="rec-player" id="rec-player">
+            <div class="rec-empty" id="rec-empty">选择左侧录像进行回放</div>
+          </div>
+          <div class="rec-controls">
+            <button class="btn ghost small" id="rec-play" type="button">播放</button>
+            <input type="range" id="rec-progress" min="0" max="1" value="0" step="0.1" aria-label="播放进度">
+            <span class="rec-time" id="rec-time">0:00 / 0:00</span>
+            <select id="rec-speed" aria-label="播放速度">
+              <option value="0.5">0.5×</option>
+              <option value="1" selected>1×</option>
+              <option value="2">2×</option>
+              <option value="4">4×</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="stepup-modal" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="stepup-title">
+      <h3 id="stepup-title">二次身份验证</h3>
+      <p>打开部署机终端需要重新确认你的账号口令。</p>
+      <form id="stepup-form" autocomplete="off">
+        <label class="field">
+          <span>当前账号口令</span>
+          <input id="stepup-password" type="password" autocomplete="current-password" required>
+        </label>
+        <p class="form-error" id="stepup-error" role="alert"></p>
+        <div class="modal-actions">
+          <button type="button" class="btn ghost" id="stepup-cancel">取消</button>
+          <button type="submit" class="btn primary" id="stepup-submit">验证并继续</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/vendor/xterm/xterm.js"></script>
+  <script src="/vendor/xterm/addon-fit.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>

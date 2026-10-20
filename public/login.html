@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>登录 · WebSSH</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body class="login-body">
+  <div class="login-wrap">
+    <div class="login-card">
+      <div class="login-brand">
+        <div class="brand-mark">&gt;_</div>
+        <div>
+          <h1>WebSSH</h1>
+          <p>浏览器里的远程终端</p>
+        </div>
+      </div>
+
+      <form id="login-form" class="login-form" autocomplete="on">
+        <label class="field">
+          <span>用户名</span>
+          <input id="username" name="username" type="text" autocomplete="username" required autofocus>
+        </label>
+        <label class="field">
+          <span>密码</span>
+          <input id="password" name="password" type="password" autocomplete="current-password" required>
+        </label>
+        <button class="btn primary block" type="submit" id="submit-btn">登 录</button>
+        <p class="form-error" id="error" role="alert"></p>
+      </form>
+
+      <p class="login-foot">所有 SSH 凭据仅用于建立单次连接，服务端不做持久化存储。</p>
+    </div>
+  </div>
+  <script src="/js/login.js"></script>
+</body>
+</html>

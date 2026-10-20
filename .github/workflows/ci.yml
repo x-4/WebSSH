@@ -1,0 +1,80 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  test:
+    name: Node ${{ matrix.node }} / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            node: 22
+            coverage: true
+          - os: ubuntu-latest
+            node: 24
+            coverage: false
+          - os: windows-latest
+            node: 22
+            coverage: false
+          - os: macos-latest
+            node: 22
+            coverage: false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      # node-pty 是可选依赖：能编译则启用本机终端测试，失败也不阻断安装
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Unit & integration tests
+        run: npm test
+
+      - name: Coverage gate
+        if: matrix.coverage
+        run: npm run coverage
+
+      - name: Browser E2E
+        if: matrix.coverage
+        run: npm run test:e2e
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+
+      - name: Dependency audit
+        if: matrix.coverage
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Generate SBOM
+        if: matrix.coverage
+        run: npm run sbom
+
+      - uses: actions/upload-artifact@v4
+        if: matrix.coverage
+        with:
+          name: sbom-cyclonedx
+          path: sbom.cdx.json
+
+  docker:
+    name: Docker build & smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate compose file
+        run: |
+          cp .env.example .env
+          docker compose config -q
+
+      - name: Build image and run smoke test
+        run: bash scripts/docker-smoke.sh
